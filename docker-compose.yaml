@@ -12,7 +12,7 @@ services:
       - hr-data:/app/data
     restart: unless-stopped
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - DATA_DIR=/app/data
 
 volumes:

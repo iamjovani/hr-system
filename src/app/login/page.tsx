@@ -112,6 +112,7 @@ export default function Login() {
                   />
                 </div>
               </CardContent>
+              <br/>
               <CardFooter>
                 <Button 
                   type="submit" 
@@ -139,6 +140,7 @@ export default function Login() {
                   />
                 </div>
               </CardContent>
+              <br/>
               <CardFooter>
                 <Button 
                   type="submit" 

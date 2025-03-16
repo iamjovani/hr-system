@@ -390,9 +390,8 @@ export default function AdminDashboard() {
                             new Date(a.clockInTime).getTime()
                         )
                         .map((record, index) => {
-                          // If record.id is guaranteed unique, you can just use key={record.id}.
-                          // Otherwise, fallback to something like record.id || index to avoid duplicates.
-                          const key = record.id || String(index);
+                          // Create a compound key using multiple properties to ensure uniqueness
+                          const key = `${record.employeeId}-${record.clockInTime}-${index}`;
 
                           const employee = employees.find(
                             (emp) => emp.id === record.employeeId
