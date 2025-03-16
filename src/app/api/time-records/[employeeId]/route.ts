@@ -2,10 +2,10 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 
-export async function GET(
-  request: Request,
-  { params }: { params: { employeeId: string } }
-) {
+export async function GET(request: Request, { params }: { params: { employeeId: string } }) {
+  // Extract employeeId from params
+  const { employeeId } = params;
+
   try {
     const timeRecords = db.prepare(`
       SELECT 
@@ -17,8 +17,8 @@ export async function GET(
       FROM time_records t
       JOIN employees e ON t.employeeId = e.id
       WHERE t.employeeId = ?
-    `).all(params.employeeId);
-    
+    `).all(employeeId);
+
     return NextResponse.json(timeRecords);
   } catch (error) {
     console.error('Error fetching time records:', error);

@@ -21,21 +21,21 @@ const Navbar = ({ currentUser, setCurrentUser }: NavbarProps) => {
   };
 
   return (
-    <header className="bg-white dark:bg-gray-800 border-b">
+    <header className="border-b bg-background">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center">
-          <Clock className="h-6 w-6 text-black dark:text-white mr-2" />
-          <span className="font-bold text-black dark:text-white text-xl">HR System</span>
+          <Clock className="h-6 w-6 text-foreground/80 mr-2" />
+          <span className="font-bold text-foreground text-xl">HR System</span>
         </div>
 
         {currentUser ? (
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2">
-              <User className="h-4 w-4 text-black dark:text-white" />
-              <span className="text-black dark:text-white">{currentUser.name}</span>
+              <User className="h-4 w-4 text-foreground/80" />
+              <span className="text-foreground">{currentUser.name}</span>
             </div>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 text-black dark:text-white mr-2" />
+            <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1">
+              <LogOut className="h-4 w-4" />
               Logout
             </Button>
           </div>

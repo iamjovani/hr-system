@@ -19,7 +19,7 @@ export default function AdminDashboard() {
   const [newEmployee, setNewEmployee] = useState<Partial<Employee>>({ name: '', payRate: undefined });
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const router = useRouter();
-  
+
   const { 
     employees, 
     timeRecords, 
@@ -51,8 +51,8 @@ export default function AdminDashboard() {
       payRate: parseFloat(newEmployee.payRate.toString())
     });
     
-    setNewEmployee({ name: '', payRate: undefined });
     toast.success(`${newEmployee.name} has been added to the system.`);
+    setNewEmployee({ name: '', payRate: undefined });
   };
 
   const handleEditEmployee = async (e: React.FormEvent) => {
@@ -67,9 +67,8 @@ export default function AdminDashboard() {
         name: editingEmployee.name,
         payRate: parseFloat(editingEmployee.payRate.toString())
       });
-      
-      setEditingEmployee(null);
       toast.success("Employee information has been updated.");
+      setEditingEmployee(null);
     } catch (error) {
       console.error("Update failed:", error);
       toast.error("Failed to update employee. Please try again.");
@@ -171,6 +170,7 @@ export default function AdminDashboard() {
     return new Date(dateString).toLocaleString(undefined, options);
   };
 
+  // If still loading or not an admin, show loading screen
   if (!isLoaded || !currentUser || !currentUser.isAdmin) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
@@ -182,9 +182,7 @@ export default function AdminDashboard() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Admin Dashboard</CardTitle>
-            <CardDescription>
-              Manage employees and view time records
-            </CardDescription>
+            <CardDescription>Manage employees and view time records</CardDescription>
           </CardHeader>
         </Card>
 
@@ -194,6 +192,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="time-records">Time Records</TabsTrigger>
           </TabsList>
 
+          {/* EMPLOYEES TAB */}
           <TabsContent value="employees">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -222,7 +221,9 @@ export default function AdminDashboard() {
                           <Input
                             id="name"
                             value={newEmployee.name}
-                            onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+                            onChange={(e) =>
+                              setNewEmployee({ ...newEmployee, name: e.target.value })
+                            }
                             placeholder="John Doe"
                           />
                         </div>
@@ -233,11 +234,20 @@ export default function AdminDashboard() {
                             type="number"
                             step="0.01"
                             min="0"
-                            value={newEmployee.payRate === undefined ? '' : newEmployee.payRate}
-                            onChange={(e) => setNewEmployee({
-                              ...newEmployee, 
-                              payRate: e.target.value === '' ? undefined : parseFloat(e.target.value)
-                            })}
+                            value={
+                              newEmployee.payRate === undefined
+                                ? ''
+                                : newEmployee.payRate
+                            }
+                            onChange={(e) =>
+                              setNewEmployee({
+                                ...newEmployee,
+                                payRate:
+                                  e.target.value === ''
+                                    ? undefined
+                                    : parseFloat(e.target.value)
+                              })
+                            }
                             placeholder="15.00"
                           />
                         </div>
@@ -268,12 +278,18 @@ export default function AdminDashboard() {
                         <TableCell className="text-right space-x-2">
                           <Dialog>
                             <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" onClick={() => setEditingEmployee({ ...employee })}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setEditingEmployee({ ...employee })
+                                }
+                              >
                                 <Pencil className="h-4 w-4" />
                               </Button>
                             </DialogTrigger>
                             <DialogContent>
-                              {editingEmployee && (
+                              {editingEmployee && editingEmployee.id === employee.id && (
                                 <form onSubmit={handleEditEmployee}>
                                   <DialogHeader>
                                     <DialogTitle>Edit Employee</DialogTitle>
@@ -287,10 +303,12 @@ export default function AdminDashboard() {
                                       <Input
                                         id="edit-name"
                                         value={editingEmployee.name}
-                                        onChange={(e) => setEditingEmployee({
-                                          ...editingEmployee, 
-                                          name: e.target.value
-                                        })}
+                                        onChange={(e) =>
+                                          setEditingEmployee({
+                                            ...editingEmployee,
+                                            name: e.target.value
+                                          })
+                                        }
                                       />
                                     </div>
                                     <div className="grid gap-2">
@@ -301,10 +319,12 @@ export default function AdminDashboard() {
                                         step="0.01"
                                         min="0"
                                         value={editingEmployee.payRate}
-                                        onChange={(e) => setEditingEmployee({
-                                          ...editingEmployee, 
-                                          payRate: parseFloat(e.target.value)
-                                        })}
+                                        onChange={(e) =>
+                                          setEditingEmployee({
+                                            ...editingEmployee,
+                                            payRate: parseFloat(e.target.value)
+                                          })
+                                        }
                                       />
                                     </div>
                                   </div>
@@ -315,17 +335,19 @@ export default function AdminDashboard() {
                               )}
                             </DialogContent>
                           </Dialog>
-                          
-                          <Button 
-                            variant="outline" 
+
+                          <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => handleDeleteEmployee(employee.id, employee.name)}
+                            onClick={() =>
+                              handleDeleteEmployee(employee.id, employee.name)
+                            }
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
                           </Button>
-                          
-                          <Button 
-                            variant="outline" 
+
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => handlePrintTimesheet(employee.id)}
                           >
@@ -340,13 +362,12 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
+          {/* TIME RECORDS TAB */}
           <TabsContent value="time-records">
             <Card>
               <CardHeader>
                 <CardTitle>Time Records</CardTitle>
-                <CardDescription>
-                  View all employee time records
-                </CardDescription>
+                <CardDescription>View all employee time records</CardDescription>
               </CardHeader>
               <CardContent>
                 {timeRecords.length > 0 ? (
@@ -363,28 +384,49 @@ export default function AdminDashboard() {
                     </TableHeader>
                     <TableBody>
                       {timeRecords
-                        .sort((a, b) => new Date(b.clockInTime).getTime() - new Date(a.clockInTime).getTime())
-                        .map((record) => {
-                          const employee = employees.find(emp => emp.id === record.employeeId);
+                        .sort(
+                          (a, b) =>
+                            new Date(b.clockInTime).getTime() -
+                            new Date(a.clockInTime).getTime()
+                        )
+                        .map((record, index) => {
+                          // If record.id is guaranteed unique, you can just use key={record.id}.
+                          // Otherwise, fallback to something like record.id || index to avoid duplicates.
+                          const key = record.id || String(index);
+
+                          const employee = employees.find(
+                            (emp) => emp.id === record.employeeId
+                          );
                           const clockIn = new Date(record.clockInTime);
-                          const clockOut = record.clockOutTime ? new Date(record.clockOutTime) : null;
-                          const hoursWorked = clockOut 
-                            ? ((clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60)).toFixed(2)
+                          const clockOut = record.clockOutTime
+                            ? new Date(record.clockOutTime)
+                            : null;
+                          const hoursWorked = clockOut
+                            ? (
+                                (clockOut.getTime() - clockIn.getTime()) /
+                                (1000 * 60 * 60)
+                              ).toFixed(2)
                             : 'In progress';
-                            
+
                           return (
-                            <TableRow key={record.id}>
+                            <TableRow key={key}>
                               <TableCell>{employee?.name || 'Unknown'}</TableCell>
                               <TableCell>{clockIn.toLocaleDateString()}</TableCell>
                               <TableCell>{formatDate(record.clockInTime)}</TableCell>
                               <TableCell>
-                                {record.clockOutTime ? formatDate(record.clockOutTime) : '-'}
+                                {record.clockOutTime
+                                  ? formatDate(record.clockOutTime)
+                                  : '-'}
                               </TableCell>
                               <TableCell>{hoursWorked}</TableCell>
                               <TableCell>
-                                <span className={`px-2 py-1 rounded-full text-xs ${
-                                  record.clockOutTime ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                                }`}>
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs ${
+                                    record.clockOutTime
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-blue-100 text-blue-800'
+                                  }`}
+                                >
                                   {record.clockOutTime ? 'Completed' : 'Active'}
                                 </span>
                               </TableCell>

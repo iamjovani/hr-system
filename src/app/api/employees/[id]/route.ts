@@ -2,29 +2,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 
-// Define interfaces for type safety
+// Define interface for employee type
 interface Employee {
   id: string;
   name: string;
   payRate: number;
 }
 
-interface EmployeeUpdate {
-  name?: string;
-  payRate?: number;
-}
-
-// Use Next.js types for route parameters
-type RouteParams = { params: { id: string } };
-
+// GET endpoint handler
 export async function GET(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string } }
 ) {
+  // Await params before accessing id
+  const { id } = await params;
+
   try {
-    const { id } = context.params;
-    
-    // Add type assertion to tell TypeScript about the object structure
+    // Fetch employee by ID
     const employee = db.prepare('SELECT * FROM employees WHERE id = ?')
       .get(id) as Employee | undefined;
     
@@ -45,17 +39,19 @@ export async function GET(
   }
 }
 
+// PUT endpoint handler
 export async function PUT(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string } }
 ) {
+  // Await params before accessing id
+  const { id } = await params;
+  
   try {
-    const { id } = context.params;
+    // Parse request body
+    const updates = await request.json();
     
-    // Parse the request body
-    const updates: EmployeeUpdate = await request.json();
-    
-    // Validate employee exists - add type assertion here
+    // Verify employee exists
     const existingEmployee = db.prepare('SELECT * FROM employees WHERE id = ?')
       .get(id) as Employee | undefined;
     
@@ -66,18 +62,17 @@ export async function PUT(
       );
     }
     
-    // Handle updates, preserving existing values if not provided
+    // Update employee record
     const updatedName = updates.name !== undefined ? updates.name : existingEmployee.name;
     const updatedPayRate = updates.payRate !== undefined ? updates.payRate : existingEmployee.payRate;
     
-    // Update the employee record
     db.prepare('UPDATE employees SET name = ?, payRate = ? WHERE id = ?').run(
       updatedName, 
       updatedPayRate, 
       id
     );
     
-    // Fetch and return the updated employee - add type assertion here too
+    // Return updated employee
     const updatedEmployee = db.prepare('SELECT * FROM employees WHERE id = ?')
       .get(id) as Employee;
     
@@ -91,14 +86,15 @@ export async function PUT(
   }
 }
 
+// DELETE endpoint handler
 export async function DELETE(
   request: NextRequest,
-  context: RouteParams
+  context: { params: { id: string } }
 ) {
+  const id = context.params.id;
+  
   try {
-    const { id } = context.params;
-    
-    // Check if employee exists - add type assertion here
+    // Check if employee exists
     const employee = db.prepare('SELECT * FROM employees WHERE id = ?')
       .get(id) as Employee | undefined;
     
@@ -109,10 +105,8 @@ export async function DELETE(
       );
     }
     
-    // Delete the employee
+    // Delete employee and related records
     db.prepare('DELETE FROM employees WHERE id = ?').run(id);
-    
-    // Also delete related time records
     db.prepare('DELETE FROM time_records WHERE employeeId = ?').run(id);
     
     return new NextResponse(null, { status: 204 });

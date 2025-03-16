@@ -27,12 +27,14 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@nrwl/linter": "^19.8.4",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
+    "@types/webpack": "^5.28.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
