@@ -1,0 +1,20 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  hr-system:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - hr-data:/app/data
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATA_DIR=/app/data
+
+volumes:
+  hr-data:
+    driver: local
