@@ -16,7 +16,9 @@ export default function EmployeeDashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
   const router = useRouter();
+  
   const { 
     currentUser, 
     setCurrentUser, 
@@ -24,7 +26,7 @@ export default function EmployeeDashboard() {
     clockOut, 
     timeRecords,
     isLoaded,
-    fetchTimeRecords // Assuming you've added this to AppContext
+    fetchTimeRecords
   } = useAppContext();
 
   // Redirect if not logged in
@@ -46,10 +48,32 @@ export default function EmployeeDashboard() {
     return false;
   }, [timeRecords, currentUser]);
 
-  // Check if already clocked in on component mount and when dependencies change
+  // Check clock status when timeRecords or currentUser changes
   useEffect(() => {
     checkClockStatus();
   }, [timeRecords, currentUser, checkClockStatus]);
+
+  // Automatically fetch fresh time records once after login
+  useEffect(() => {
+    // Only run this effect once when the component is first loaded and user is logged in
+    if (isLoaded && currentUser && !initialFetchDone && fetchTimeRecords) {
+      const fetchInitialData = async () => {
+        setIsRefreshing(true);
+        try {
+          await fetchTimeRecords(currentUser.id);
+          // Update initialFetchDone to prevent further automatic fetches
+          setInitialFetchDone(true);
+          // Status will be updated automatically by the checkClockStatus effect
+        } catch (error) {
+          console.error('Error fetching initial time records:', error);
+        } finally {
+          setIsRefreshing(false);
+        }
+      };
+      
+      fetchInitialData();
+    }
+  }, [isLoaded, currentUser, initialFetchDone, fetchTimeRecords]);
 
   // Update current time every second
   useEffect(() => {
@@ -59,18 +83,16 @@ export default function EmployeeDashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  // Refresh time records from server periodically (every 5 minutes)
-  useEffect(() => {
-    const refreshInterval = setInterval(() => {
-      if (currentUser) {
-        refreshTimeRecords(false);
-      }
-    }, 5 * 60 * 1000); // 5 minutes
-    
-    return () => clearInterval(refreshInterval);
-  }, [currentUser]);
+  // Function to toggle clock in/out based on current status
+  const toggleClockStatus = async () => {
+    if (isClockedIn) {
+      await handleClockOut();
+    } else {
+      await handleClockIn();
+    }
+  };
 
-  // Function to refresh time records
+  // Function to manually refresh time records
   const refreshTimeRecords = async (showToast = true) => {
     if (!currentUser) return;
     
@@ -101,6 +123,8 @@ export default function EmployeeDashboard() {
     
     // Double-check status before clocking in
     await refreshTimeRecords(false);
+    
+    // If already clocked in after refresh, show message and return
     if (checkClockStatus()) {
       toast.error('You are already clocked in');
       return;
@@ -128,6 +152,8 @@ export default function EmployeeDashboard() {
     
     // Double-check status before clocking out
     await refreshTimeRecords(false);
+    
+    // If not clocked in after refresh, show message and return
     if (!checkClockStatus()) {
       toast.error('You are not currently clocked in');
       return;
@@ -210,23 +236,17 @@ export default function EmployeeDashboard() {
               {currentTime.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </div>
             <div className="flex justify-center gap-4">
+              {/* Single button that changes based on current status */}
               <Button 
                 size="lg"
-                onClick={handleClockIn}
-                disabled={isClockedIn || isLoading || isRefreshing}
-                className={!isClockedIn ? "bg-green-600 hover:bg-green-700" : ""}
+                onClick={toggleClockStatus}
+                disabled={isLoading || isRefreshing}
+                className={isClockedIn 
+                  ? "bg-red-600 hover:bg-red-700" 
+                  : "bg-green-600 hover:bg-green-700"}
               >
                 <Clock className="mr-2 h-5 w-5" /> 
-                {isLoading ? 'Processing...' : 'Clock In'}
-              </Button>
-              <Button 
-                size="lg" 
-                onClick={handleClockOut}
-                disabled={!isClockedIn || isLoading || isRefreshing}
-                className={isClockedIn ? "bg-red-600 hover:bg-red-700" : ""}
-              >
-                <Clock className="mr-2 h-5 w-5" /> 
-                {isLoading ? 'Processing...' : 'Clock Out'}
+                {isLoading ? 'Processing...' : (isClockedIn ? 'Clock Out' : 'Clock In')}
               </Button>
             </div>
             <div className="mt-4">

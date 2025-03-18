@@ -1,4 +1,3 @@
-// src/app/context/AppContext.tsx (fixed JSON parsing errors)
 "use client"
 
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
@@ -14,6 +13,8 @@ interface AppContextType {
   addEmployee: (employee: Partial<Employee>) => Promise<Employee>;
   updateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
+  updateTimeRecord: (id: string, updates: Partial<TimeRecord>) => Promise<void>;
+  deleteTimeRecord: (id: string) => Promise<void>;
   calculateStats: (employeeId?: string) => StatRecord[];
   isLoaded: boolean;
   fetchTimeRecords: (employeeId: number | string) => Promise<void>;
@@ -310,6 +311,102 @@ export const AppProvider = ({ children }: AppProviderProps) => {
       throw error;
     }
   };
+
+  // Update time record function
+  const updateTimeRecord = async (id: string, updates: Partial<TimeRecord>): Promise<void> => {
+    try {
+      // Ensure id and updates are valid
+      if (!id) {
+        throw new Error('Time record ID is required');
+      }
+
+      // Type safety check for updates
+      if (typeof updates !== 'object' || updates === null) {
+        throw new Error('Invalid updates object');
+      }
+
+      const response = await fetch('/api/time-records', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id,
+          ...updates
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to update time record';
+        
+        try {
+          // Safely parse the error response without assuming structure
+          const errorObj = JSON.parse(errorText);
+          if (typeof errorObj === 'object' && errorObj !== null) {
+            if ('error' in errorObj && typeof errorObj.error === 'string') {
+              errorMessage = errorObj.error;
+            }
+          }
+        } catch (parseError) {
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const updatedRecord = await response.json();
+      
+      // Update local state
+      setTimeRecords(prevRecords => 
+        prevRecords.map(record => 
+          record.id === id ? updatedRecord : record
+        )
+      );
+    } catch (error) {
+      console.error('Update time record error:', error);
+      throw error;
+    }
+  };
+
+  // Delete time record function
+  const deleteTimeRecord = async (id: string): Promise<void> => {
+    try {
+      const response = await fetch(`/api/time-records?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to delete time record';
+        
+        try {
+          const errorObj = JSON.parse(errorText);
+          if (typeof errorObj === 'object' && errorObj !== null) {
+            if ('error' in errorObj && typeof errorObj.error === 'string') {
+              errorMessage = errorObj.error;
+            }
+          }
+        } catch (parseError) {
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      // Update local state by removing the deleted record
+      setTimeRecords(prevRecords => 
+        prevRecords.filter(record => record.id !== id)
+      );
+    } catch (error) {
+      console.error('Delete time record error:', error);
+      throw error;
+    }
+  };
   
   // Calculate total hours and pay
   const calculateStats = (employeeId?: string): StatRecord[] => {
@@ -373,6 +470,8 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     addEmployee,
     updateEmployee,
     deleteEmployee,
+    updateTimeRecord,
+    deleteTimeRecord,
     calculateStats,
     isLoaded,
     fetchTimeRecords

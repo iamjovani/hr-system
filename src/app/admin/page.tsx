@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Printer, UserPlus, Pencil, Trash2 } from 'lucide-react';
+import { Printer, UserPlus, Pencil, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import Navbar from '../component/Navbar';
 import { useAppContext } from '../context/AppContext';
 import { Employee } from '../types';
@@ -18,6 +19,10 @@ import { Employee } from '../types';
 export default function AdminDashboard() {
   const [newEmployee, setNewEmployee] = useState<Partial<Employee>>({ name: '', payRate: undefined });
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [editingTimeRecord, setEditingTimeRecord] = useState<any | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const router = useRouter();
 
   const { 
@@ -28,6 +33,8 @@ export default function AdminDashboard() {
     addEmployee, 
     updateEmployee, 
     deleteEmployee,
+    updateTimeRecord,
+    deleteTimeRecord,
     calculateStats,
     isLoaded
   } = useAppContext();
@@ -38,6 +45,46 @@ export default function AdminDashboard() {
       router.push('/login');
     }
   }, [currentUser, router, isLoaded]);
+
+  // Filter and paginate time records
+  const filteredTimeRecords = timeRecords
+    .filter(record => {
+      const employee = employees.find(emp => emp.id === record.employeeId);
+      const employeeName = employee?.name || 'Unknown';
+      // Search in employee name and dates
+      const clockInDate = new Date(record.clockInTime).toLocaleDateString();
+      const clockOutDate = record.clockOutTime 
+        ? new Date(record.clockOutTime).toLocaleDateString() 
+        : '';
+      
+      return searchQuery === '' || 
+        employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        clockInDate.includes(searchQuery) ||
+        clockOutDate.includes(searchQuery);
+    })
+    .sort((a, b) => new Date(b.clockInTime).getTime() - new Date(a.clockInTime).getTime());
+
+  // Calculate pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredTimeRecords.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredTimeRecords.length / itemsPerPage);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  // Handle page change
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // Handle items per page change
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
 
   const handleAddEmployee = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +126,34 @@ export default function AdminDashboard() {
     if (window.confirm(`Are you sure you want to delete ${name}?`)) {
       deleteEmployee(id);
       toast.success(`${name} has been removed from the system.`);
+    }
+  };
+
+  const handleEditTimeRecord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTimeRecord) {
+      return;
+    }
+    
+    try {
+      await updateTimeRecord(editingTimeRecord.id, {
+        clockInTime: new Date(editingTimeRecord.clockInTime).toISOString(),
+        clockOutTime: editingTimeRecord.clockOutTime 
+          ? new Date(editingTimeRecord.clockOutTime).toISOString() 
+          : null
+      });
+      toast.success("Time record has been updated.");
+      setEditingTimeRecord(null);
+    } catch (error) {
+      console.error("Update failed:", error);
+      toast.error("Failed to update time record. Please try again.");
+    }
+  };
+
+  const handleDeleteTimeRecord = (id: string, employeeName: string) => {
+    if (window.confirm(`Are you sure you want to delete this time record for ${employeeName}?`)) {
+      deleteTimeRecord(id);
+      toast.success("Time record has been deleted.");
     }
   };
 
@@ -168,6 +243,125 @@ export default function AdminDashboard() {
       minute: '2-digit'
     };
     return new Date(dateString).toLocaleString(undefined, options);
+  };
+
+  // Fixed format date for datetime-local input field
+  const formatDateTimeLocal = (dateString: string) => {
+    if (!dateString) return '';
+    
+    // Create a date object from the string
+    const date = new Date(dateString);
+    
+    // Format YYYY-MM-DD part
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    // Format HH:MM part
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    // Combine in format required by datetime-local: YYYY-MM-DDTHH:MM
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Generate pagination buttons
+  const renderPaginationButtons = () => {
+    const buttons = [];
+    
+    // Previous page button
+    buttons.push(
+      <Button 
+        key="prev" 
+        variant="outline" 
+        size="sm" 
+        onClick={() => handlePageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+    );
+    
+    // Page number buttons
+    const maxButtonsToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxButtonsToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxButtonsToShow - 1);
+    
+    // Adjust start if we're near the end
+    if (endPage - startPage + 1 < maxButtonsToShow) {
+      startPage = Math.max(1, endPage - maxButtonsToShow + 1);
+    }
+    
+    // First page
+    if (startPage > 1) {
+      buttons.push(
+        <Button 
+          key="1" 
+          variant={currentPage === 1 ? "default" : "outline"} 
+          size="sm" 
+          onClick={() => handlePageChange(1)}
+        >
+          1
+        </Button>
+      );
+      
+      // Ellipsis if needed
+      if (startPage > 2) {
+        buttons.push(
+          <span key="ellipsis1" className="px-2">...</span>
+        );
+      }
+    }
+    
+    // Page numbers
+    for (let i = startPage; i <= endPage; i++) {
+      buttons.push(
+        <Button 
+          key={i} 
+          variant={currentPage === i ? "default" : "outline"} 
+          size="sm" 
+          onClick={() => handlePageChange(i)}
+        >
+          {i}
+        </Button>
+      );
+    }
+    
+    // Last page
+    if (endPage < totalPages) {
+      // Ellipsis if needed
+      if (endPage < totalPages - 1) {
+        buttons.push(
+          <span key="ellipsis2" className="px-2">...</span>
+        );
+      }
+      
+      buttons.push(
+        <Button 
+          key={totalPages} 
+          variant={currentPage === totalPages ? "default" : "outline"} 
+          size="sm" 
+          onClick={() => handlePageChange(totalPages)}
+        >
+          {totalPages}
+        </Button>
+      );
+    }
+    
+    // Next page button
+    buttons.push(
+      <Button 
+        key="next" 
+        variant="outline" 
+        size="sm" 
+        onClick={() => handlePageChange(currentPage + 1)}
+        disabled={currentPage === totalPages || totalPages === 0}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    );
+    
+    return buttons;
   };
 
   // If still loading or not an admin, show loading screen
@@ -367,29 +561,57 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Time Records</CardTitle>
-                <CardDescription>View all employee time records</CardDescription>
+                <CardDescription>View, edit or delete employee time records</CardDescription>
               </CardHeader>
               <CardContent>
-                {timeRecords.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Employee</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Clock In</TableHead>
-                        <TableHead>Clock Out</TableHead>
-                        <TableHead>Hours</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {timeRecords
-                        .sort(
-                          (a, b) =>
-                            new Date(b.clockInTime).getTime() -
-                            new Date(a.clockInTime).getTime()
-                        )
-                        .map((record, index) => {
+                <div className="flex justify-between mb-6">
+                  {/* Search box */}
+                  <div className="relative w-72">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by employee or date..."
+                      className="pl-8"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  
+                  {/* Items per page selector */}
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor="itemsPerPage">Show</Label>
+                    <Select
+                      value={itemsPerPage.toString()}
+                      onValueChange={handleItemsPerPageChange}
+                    >
+                      <SelectTrigger className="w-20">
+                        <SelectValue placeholder="10" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="15">15</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm">per page</span>
+                  </div>
+                </div>
+
+                {filteredTimeRecords.length > 0 ? (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Employee</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Clock In</TableHead>
+                          <TableHead>Clock Out</TableHead>
+                          <TableHead>Hours</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {currentItems.map((record, index) => {
                           // Create a compound key using multiple properties to ensure uniqueness
                           const key = `${record.employeeId}-${record.clockInTime}-${index}`;
 
@@ -429,14 +651,97 @@ export default function AdminDashboard() {
                                   {record.clockOutTime ? 'Completed' : 'Active'}
                                 </span>
                               </TableCell>
+                              <TableCell className="text-right space-x-2">
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setEditingTimeRecord({ ...record })}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    {editingTimeRecord && editingTimeRecord.id === record.id && (
+                                      <form onSubmit={handleEditTimeRecord}>
+                                        <DialogHeader>
+                                          <DialogTitle>Edit Time Record</DialogTitle>
+                                          <DialogDescription>
+                                            Update time record for {employee?.name}.
+                                          </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="grid gap-4 py-4">
+                                          <div className="grid gap-2">
+                                            <Label htmlFor="edit-clockIn">Clock In Time</Label>
+                                            <Input
+                                              id="edit-clockIn"
+                                              type="datetime-local"
+                                              value={formatDateTimeLocal(editingTimeRecord.clockInTime)}
+                                              onChange={(e) =>
+                                                setEditingTimeRecord({
+                                                  ...editingTimeRecord,
+                                                  clockInTime: e.target.value
+                                                })
+                                              }
+                                            />
+                                          </div>
+                                          <div className="grid gap-2">
+                                            <Label htmlFor="edit-clockOut">Clock Out Time</Label>
+                                            <Input
+                                              id="edit-clockOut"
+                                              type="datetime-local"
+                                              value={
+                                                editingTimeRecord.clockOutTime
+                                                  ? formatDateTimeLocal(editingTimeRecord.clockOutTime)
+                                                  : ''
+                                              }
+                                              onChange={(e) =>
+                                                setEditingTimeRecord({
+                                                  ...editingTimeRecord,
+                                                  clockOutTime: e.target.value || null
+                                                })
+                                              }
+                                            />
+                                          </div>
+                                        </div>
+                                        <DialogFooter>
+                                          <Button type="submit">Save Changes</Button>
+                                        </DialogFooter>
+                                      </form>
+                                    )}
+                                  </DialogContent>
+                                </Dialog>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteTimeRecord(record.id, employee?.name || 'Unknown')}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </TableCell>
                             </TableRow>
                           );
                         })}
-                    </TableBody>
-                  </Table>
+                      </TableBody>
+                    </Table>
+                    
+                    {/* Pagination controls */}
+                    {filteredTimeRecords.length > 0 && (
+                      <div className="flex items-center justify-between space-x-2 py-4">
+                        <div className="text-sm text-muted-foreground">
+                          Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredTimeRecords.length)} of {filteredTimeRecords.length} records
+                        </div>
+                        <div className="flex space-x-2">
+                          {renderPaginationButtons()}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="text-center py-4 text-muted-foreground">
-                    No time records found.
+                    {searchQuery ? "No matching records found." : "No time records found."}
                   </div>
                 )}
               </CardContent>

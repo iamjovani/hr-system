@@ -29,21 +29,8 @@ export default function Login() {
         const employee = await response.json();
         setCurrentUser({ ...employee, isAdmin: false });
         
-        // Clock in the employee
-        const clockInResponse = await fetch('/api/clock/in', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ employeeId })
-        });
-        
-        const clockInResult = await clockInResponse.json();
-        
-        if (clockInResult.success) {
-          toast.success(`Welcome, ${employee.name}! Clocked in successfully`);
-        } else {
-          toast.info(`Welcome, ${employee.name}! ${clockInResult.message}`);
-        }
-        
+        // Just show welcome message without auto clock-in
+        toast.success(`Welcome, ${employee.name}! Please check your clock status.`);
         router.push('/employee');
       } else {
         toast.error('Invalid employee ID. Please check your ID and try again.');
@@ -89,7 +76,7 @@ export default function Login() {
         <CardHeader>
           <CardTitle className="text-center">HR System Login</CardTitle>
           <CardDescription className="text-center">
-            Clock in/out or access the admin dashboard
+            Access your dashboard or admin panel
           </CardDescription>
         </CardHeader>
         <Tabs defaultValue="employee" className="w-full">
@@ -119,7 +106,7 @@ export default function Login() {
                   className="w-full"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Processing...' : 'Clock In/Out'}
+                  {isLoading ? 'Processing...' : 'Login'}
                 </Button>
               </CardFooter>
             </form>
