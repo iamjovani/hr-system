@@ -86,6 +86,25 @@ export default function AdminDashboard() {
     setCurrentPage(1); // Reset to first page when changing items per page
   };
 
+  // Handle changes to payRate - safely parse numbers and avoid NaN
+  const handlePayRateChange = (value: string, setStateFn: Function, currentState: any) => {
+    if (value === '') {
+      setStateFn({
+        ...currentState,
+        payRate: undefined
+      });
+      return;
+    }
+    
+    const parsed = parseFloat(value);
+    if (!isNaN(parsed)) {
+      setStateFn({
+        ...currentState,
+        payRate: parsed
+      });
+    }
+  };
+
   const handleAddEmployee = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmployee.name || newEmployee.payRate === undefined) {
@@ -104,15 +123,15 @@ export default function AdminDashboard() {
 
   const handleEditEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingEmployee || !editingEmployee.name || editingEmployee.payRate === undefined) {
-      toast.error("Missing fields: Please fill out all fields");
+    if (!editingEmployee || !editingEmployee.name || editingEmployee.payRate === undefined || isNaN(editingEmployee.payRate)) {
+      toast.error("Missing or invalid fields: Please fill out all fields correctly");
       return;
     }
     
     try {
       await updateEmployee(editingEmployee.id, {
         name: editingEmployee.name,
-        payRate: parseFloat(editingEmployee.payRate.toString())
+        payRate: editingEmployee.payRate
       });
       toast.success("Employee information has been updated.");
       setEditingEmployee(null);
@@ -428,20 +447,8 @@ export default function AdminDashboard() {
                             type="number"
                             step="0.01"
                             min="0"
-                            value={
-                              newEmployee.payRate === undefined
-                                ? ''
-                                : newEmployee.payRate
-                            }
-                            onChange={(e) =>
-                              setNewEmployee({
-                                ...newEmployee,
-                                payRate:
-                                  e.target.value === ''
-                                    ? undefined
-                                    : parseFloat(e.target.value)
-                              })
-                            }
+                            value={newEmployee.payRate === undefined ? '' : String(newEmployee.payRate)}
+                            onChange={(e) => handlePayRateChange(e.target.value, setNewEmployee, newEmployee)}
                             placeholder="15.00"
                           />
                         </div>
@@ -512,13 +519,8 @@ export default function AdminDashboard() {
                                         type="number"
                                         step="0.01"
                                         min="0"
-                                        value={editingEmployee.payRate}
-                                        onChange={(e) =>
-                                          setEditingEmployee({
-                                            ...editingEmployee,
-                                            payRate: parseFloat(e.target.value)
-                                          })
-                                        }
+                                        value={String(editingEmployee.payRate)}
+                                        onChange={(e) => handlePayRateChange(e.target.value, setEditingEmployee, editingEmployee)}
                                       />
                                     </div>
                                   </div>
