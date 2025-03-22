@@ -30,10 +30,13 @@ export async function POST(request: Request) {
     const lastId = db.prepare('SELECT MAX(CAST(id as INT)) as maxId FROM employees').get() as { maxId: number };
     const newId = String(Math.max(1004, (lastId.maxId || 1003) + 1));
     
-    // Insert the new employee
+    // Default password is 'password123'
+    const defaultPassword = 'password123';
+    
+    // Insert the new employee with default password
     db.prepare(
-      'INSERT INTO employees (id, name, payRate) VALUES (?, ?, ?)'
-    ).run(newId, name, payRate);
+      'INSERT INTO employees (id, name, payRate, password) VALUES (?, ?, ?, ?)'
+    ).run(newId, name, payRate, defaultPassword);
     
     // Return the created employee
     const newEmployee = db.prepare('SELECT * FROM employees WHERE id = ?').get(newId);

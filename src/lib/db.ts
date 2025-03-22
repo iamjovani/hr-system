@@ -37,7 +37,7 @@ db.exec(`
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     payRate REAL NOT NULL,
-    password TEXT NOT NULL DEFAULT 'password'
+    password TEXT NOT NULL DEFAULT 'password123'
   );
   
   CREATE TABLE IF NOT EXISTS time_records (
@@ -61,9 +61,9 @@ if (employeeCount.count === 0) {
   // Seed initial employees
   const insertEmployee = db.prepare('INSERT INTO employees (id, name, payRate, password) VALUES (?, ?, ?, ?)');
   
-  insertEmployee.run('1001', 'John Doe', 15.50, 'password');
-  insertEmployee.run('1002', 'Jane Smith', 18.75, 'password');
-  insertEmployee.run('1003', 'Robert Johnson', 20.00, 'password');
+  insertEmployee.run('1001', 'John Doe', 15.50, 'password123');
+  insertEmployee.run('1002', 'Jane Smith', 18.75, 'password123');
+  insertEmployee.run('1003', 'Robert Johnson', 20.00, 'password123');
   
   // Seed admin user
   db.prepare('INSERT INTO admins (username, password) VALUES (?, ?)').run('admin', 'admin123');
@@ -78,7 +78,7 @@ try {
 } catch (error) {
   // If error, then password field doesn't exist, so add it
   console.log('Adding password field to employees table...');
-  db.exec('ALTER TABLE employees ADD COLUMN password TEXT NOT NULL DEFAULT "password"');
+  db.exec('ALTER TABLE employees ADD COLUMN password TEXT NOT NULL DEFAULT "password123"');
   console.log('Password field added to employees table');
 }
 

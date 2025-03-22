@@ -12,6 +12,7 @@ import { useAppContext } from '../context/AppContext';
 
 export default function Login() {
   const [employeeId, setEmployeeId] = useState('');
+  const [employeePassword, setEmployeePassword] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -22,18 +23,23 @@ export default function Login() {
     setIsLoading(true);
     
     try {
-      // Fetch employee from API instead of local state
-      const response = await fetch(`/api/employees/${employeeId}`);
+      // Send both employee ID and password to the API
+      const response = await fetch('/api/auth/employee/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          employeeId,
+          password: employeePassword 
+        })
+      });
       
       if (response.ok) {
         const employee = await response.json();
         setCurrentUser({ ...employee, isAdmin: false });
-        
-        // Just show welcome message without auto clock-in
         toast.success(`Welcome, ${employee.name}! Please check your clock status.`);
         router.push('/employee');
       } else {
-        toast.error('Invalid employee ID. Please check your ID and try again.');
+        toast.error('Invalid credentials. Please check your ID and password and try again.');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -94,6 +100,18 @@ export default function Login() {
                     placeholder="Enter your employee ID"
                     value={employeeId}
                     onChange={(e) => setEmployeeId(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="employeePassword">Password</Label>
+                  <Input
+                    id="employeePassword"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={employeePassword}
+                    onChange={(e) => setEmployeePassword(e.target.value)}
                     required
                     disabled={isLoading}
                   />
