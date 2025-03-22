@@ -121,3 +121,54 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Date Picker Calendar Styles */
+.rdp {
+  --rdp-cell-size: 40px;
+  --rdp-accent-color: #3b82f6; /* Blue color */
+  --rdp-background-color: #e7edff;
+  margin: 0;
+}
+
+.rdp-day {
+  color: #333 !important;
+  font-weight: normal;
+}
+
+.rdp-day_selected {
+  background-color: var(--rdp-accent-color) !important;
+  color: white !important;
+}
+
+.rdp-day_selected:hover {
+  background-color: #2563eb !important; /* Darker blue on hover */
+}
+
+.rdp-day:hover {
+  background-color: #f0f0f0 !important;
+}
+
+.rdp-day_today {
+  background-color: #f5f5f5 !important;
+  font-weight: bold;
+}
+
+.rdp-button:hover:not([disabled]) {
+  background-color: var(--rdp-background-color) !important;
+}
+
+.rdp-head_cell {
+  color: #666 !important;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.rdp-caption_label {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #333 !important;
+}
+
+.rdp-nav {
+  color: #333;
+}

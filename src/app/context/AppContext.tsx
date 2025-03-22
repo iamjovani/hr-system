@@ -18,6 +18,8 @@ interface AppContextType {
   calculateStats: (employeeId?: string) => StatRecord[];
   isLoaded: boolean;
   fetchTimeRecords: (employeeId: number | string) => Promise<void>;
+  resetPassword: (employeeId: string, currentPassword: string, newPassword: string) => Promise<void>;
+  adminResetPassword: (employeeId: string, newPassword: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -460,6 +462,60 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     }
   };
 
+  const resetPassword = async (
+    employeeId: string, 
+    currentPassword: string, 
+    newPassword: string
+  ): Promise<void> => {
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          employeeId,
+          currentPassword,
+          newPassword
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reset password');
+      }
+    } catch (error) {
+      console.error('Reset password error:', error);
+      throw error;
+    }
+  };
+
+  const adminResetPassword = async (
+    employeeId: string,
+    newPassword: string
+  ): Promise<void> => {
+    try {
+      const response = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          employeeId,
+          newPassword
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reset password');
+      }
+    } catch (error) {
+      console.error('Admin reset password error:', error);
+      throw error;
+    }
+  };
+
   const value: AppContextType = {
     employees,
     timeRecords,
@@ -474,7 +530,9 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     deleteTimeRecord,
     calculateStats,
     isLoaded,
-    fetchTimeRecords
+    fetchTimeRecords,
+    resetPassword,
+    adminResetPassword
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

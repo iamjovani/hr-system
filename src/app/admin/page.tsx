@@ -11,16 +11,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Printer, UserPlus, Pencil, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import Navbar from '../component/Navbar';
+import { Printer, UserPlus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import Navbar from '../components/Navbar';
 import { useAppContext } from '../context/AppContext';
 import { Employee } from '../types';
+import { DatePicker } from '@/components/ui/date-picker';
+import { format, isValid, isSameDay } from 'date-fns';
 
 export default function AdminDashboard() {
   const [newEmployee, setNewEmployee] = useState<Partial<Employee>>({ name: '', payRate: undefined });
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [editingTimeRecord, setEditingTimeRecord] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchDate, setSearchDate] = useState<Date | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const router = useRouter();
@@ -49,18 +52,22 @@ export default function AdminDashboard() {
   // Filter and paginate time records
   const filteredTimeRecords = timeRecords
     .filter(record => {
+      // First apply date filter if set
+      if (searchDate) {
+        const recordDate = new Date(record.clockInTime);
+        if (!isSameDay(recordDate, searchDate)) {
+          return false;
+        }
+      }
+
+      // If no text search, return all records that pass date filter
+      if (searchQuery === '') return true;
+      
+      // Apply text search filter
       const employee = employees.find(emp => emp.id === record.employeeId);
       const employeeName = employee?.name || 'Unknown';
-      // Search in employee name and dates
-      const clockInDate = new Date(record.clockInTime).toLocaleDateString();
-      const clockOutDate = record.clockOutTime 
-        ? new Date(record.clockOutTime).toLocaleDateString() 
-        : '';
       
-      return searchQuery === '' || 
-        employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        clockInDate.includes(searchQuery) ||
-        clockOutDate.includes(searchQuery);
+      return employeeName.toLowerCase().includes(searchQuery.toLowerCase());
     })
     .sort((a, b) => new Date(b.clockInTime).getTime() - new Date(a.clockInTime).getTime());
 
@@ -73,7 +80,7 @@ export default function AdminDashboard() {
   // Reset to first page when search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, searchDate]);
 
   // Handle page change
   const handlePageChange = (pageNumber: number) => {
@@ -84,6 +91,11 @@ export default function AdminDashboard() {
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(Number(value));
     setCurrentPage(1); // Reset to first page when changing items per page
+  };
+
+  // Clear date filter
+  const clearDateFilter = () => {
+    setSearchDate(undefined);
   };
 
   // Handle changes to payRate - safely parse numbers and avoid NaN
@@ -264,24 +276,11 @@ export default function AdminDashboard() {
     return new Date(dateString).toLocaleString(undefined, options);
   };
 
-  // Fixed format date for datetime-local input field
+  // Format datetime for datetime-local input
   const formatDateTimeLocal = (dateString: string) => {
     if (!dateString) return '';
-    
-    // Create a date object from the string
     const date = new Date(dateString);
-    
-    // Format YYYY-MM-DD part
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    
-    // Format HH:MM part
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    
-    // Combine in format required by datetime-local: YYYY-MM-DDTHH:MM
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    return date.toISOString().slice(0, 16);
   };
 
   // Generate pagination buttons
@@ -567,15 +566,36 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="flex justify-between mb-6">
-                  {/* Search box */}
-                  <div className="relative w-72">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search by employee or date..."
-                      className="pl-8"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+                  <div className="flex gap-4 items-center">
+                    {/* Date Picker Filter */}
+                    <div className="flex items-center gap-2">
+                      <div className="w-56">
+                        <DatePicker 
+                          date={searchDate} 
+                          setDate={setSearchDate}
+                        />
+                      </div>
+                      {searchDate && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={clearDateFilter}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Search box */}
+                    <div className="relative w-64">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search by employee name..."
+                        className="pl-8"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
                   </div>
                   
                   {/* Items per page selector */}
@@ -743,7 +763,11 @@ export default function AdminDashboard() {
                   </>
                 ) : (
                   <div className="text-center py-4 text-muted-foreground">
-                    {searchQuery ? "No matching records found." : "No time records found."}
+                    {searchDate 
+                      ? "No records found for the selected date." 
+                      : searchQuery 
+                        ? "No matching records found."
+                        : "No time records found."}
                   </div>
                 )}
               </CardContent>

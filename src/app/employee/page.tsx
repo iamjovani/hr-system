@@ -5,11 +5,16 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Clock, RefreshCw } from 'lucide-react';
-import Navbar from '../component/Navbar';
+import { Clock, RefreshCw, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import Navbar from '../components/Navbar';
 import { useAppContext } from '../context/AppContext';
 import { TimeRecord } from '../types';
+import { DatePicker } from '@/components/ui/date-picker';
+import { format, isValid, isSameDay } from 'date-fns';
 
 export default function EmployeeDashboard() {
   const [isClockedIn, setIsClockedIn] = useState(false);
@@ -17,6 +22,9 @@ export default function EmployeeDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [initialFetchDone, setInitialFetchDone] = useState(false);
+  const [searchDate, setSearchDate] = useState<Date | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
   const router = useRouter();
   
   const { 
@@ -82,6 +90,11 @@ export default function EmployeeDashboard() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchDate]);
 
   // Function to toggle clock in/out based on current status
   const toggleClockStatus = async () => {
@@ -176,6 +189,11 @@ export default function EmployeeDashboard() {
     }
   };
 
+  // Clear date filter
+  const clearDateFilter = () => {
+    setSearchDate(undefined);
+  };
+
   // Format date for display
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = { 
@@ -195,12 +213,136 @@ export default function EmployeeDashboard() {
     return hours.toFixed(2);
   };
 
+  // Handle page change
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // Handle items per page change
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
+
   // Filter records for current user and sort by date (newest first)
-  const userRecords: TimeRecord[] = currentUser 
+  const filteredRecords: TimeRecord[] = currentUser 
     ? timeRecords
-        .filter(record => record.employeeId === currentUser.id)
+        .filter(record => {
+          if (record.employeeId !== currentUser.id) return false;
+          
+          if (!searchDate) return true;
+          
+          // Filter by the selected date
+          const recordDate = new Date(record.clockInTime);
+          return isSameDay(recordDate, searchDate);
+        })
         .sort((a, b) => new Date(b.clockInTime).getTime() - new Date(a.clockInTime).getTime())
     : [];
+
+  // Calculate pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredRecords.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredRecords.length / itemsPerPage);
+
+  // Render pagination buttons
+  const renderPaginationButtons = () => {
+    const buttons = [];
+    
+    // Previous page button
+    buttons.push(
+      <Button 
+        key="prev" 
+        variant="outline" 
+        size="sm" 
+        onClick={() => handlePageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+    );
+    
+    // Page number buttons
+    const maxButtonsToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxButtonsToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxButtonsToShow - 1);
+    
+    // Adjust start if we're near the end
+    if (endPage - startPage + 1 < maxButtonsToShow) {
+      startPage = Math.max(1, endPage - maxButtonsToShow + 1);
+    }
+    
+    // First page
+    if (startPage > 1) {
+      buttons.push(
+        <Button 
+          key="1" 
+          variant={currentPage === 1 ? "default" : "outline"} 
+          size="sm" 
+          onClick={() => handlePageChange(1)}
+        >
+          1
+        </Button>
+      );
+      
+      // Ellipsis if needed
+      if (startPage > 2) {
+        buttons.push(
+          <span key="ellipsis1" className="px-2">...</span>
+        );
+      }
+    }
+    
+    // Page numbers
+    for (let i = startPage; i <= endPage; i++) {
+      buttons.push(
+        <Button 
+          key={i} 
+          variant={currentPage === i ? "default" : "outline"} 
+          size="sm" 
+          onClick={() => handlePageChange(i)}
+        >
+          {i}
+        </Button>
+      );
+    }
+    
+    // Last page
+    if (endPage < totalPages) {
+      // Ellipsis if needed
+      if (endPage < totalPages - 1) {
+        buttons.push(
+          <span key="ellipsis2" className="px-2">...</span>
+        );
+      }
+      
+      buttons.push(
+        <Button 
+          key={totalPages} 
+          variant={currentPage === totalPages ? "default" : "outline"} 
+          size="sm" 
+          onClick={() => handlePageChange(totalPages)}
+        >
+          {totalPages}
+        </Button>
+      );
+    }
+    
+    // Next page button
+    buttons.push(
+      <Button 
+        key="next" 
+        variant="outline" 
+        size="sm" 
+        onClick={() => handlePageChange(currentPage + 1)}
+        disabled={currentPage === totalPages || totalPages === 0}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    );
+    
+    return buttons;
+  };
 
   if (!isLoaded || !currentUser) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -268,35 +410,89 @@ export default function EmployeeDashboard() {
             <CardDescription>Recent activity</CardDescription>
           </CardHeader>
           <CardContent>
-            {userRecords.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Clock In</TableHead>
-                    <TableHead>Clock Out</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {userRecords.map((record) => (
-                    <TableRow key={record.id}>
-                      <TableCell>{new Date(record.clockInTime).toLocaleDateString()}</TableCell>
-                      <TableCell>{formatDate(record.clockInTime)}</TableCell>
-                      <TableCell>
-                        {record.clockOutTime ? formatDate(record.clockOutTime) : 
-                          <span className="text-green-600 font-medium">Active</span>}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {calcHoursWorked(record.clockInTime, record.clockOutTime)}
-                      </TableCell>
+            <div className="flex justify-between mb-6">
+              {/* Date Picker Filter */}
+              <div className="flex items-center gap-2">
+                <div className="w-56">
+                  <DatePicker 
+                    date={searchDate} 
+                    setDate={setSearchDate}
+                  />
+                </div>
+                {searchDate && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={clearDateFilter}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              
+              {/* Items per page selector */}
+              <div className="flex items-center space-x-2">
+                <Label htmlFor="itemsPerPage">Show</Label>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={handleItemsPerPageChange}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue placeholder="5" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="15">15</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm">per page</span>
+              </div>
+            </div>
+
+            {filteredRecords.length > 0 ? (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Clock In</TableHead>
+                      <TableHead>Clock Out</TableHead>
+                      <TableHead className="text-right">Hours</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {currentItems.map((record) => (
+                      <TableRow key={record.id}>
+                        <TableCell>{new Date(record.clockInTime).toLocaleDateString()}</TableCell>
+                        <TableCell>{formatDate(record.clockInTime)}</TableCell>
+                        <TableCell>
+                          {record.clockOutTime ? formatDate(record.clockOutTime) : 
+                            <span className="text-green-600 font-medium">Active</span>}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {calcHoursWorked(record.clockInTime, record.clockOutTime)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                
+                {/* Pagination controls */}
+                {filteredRecords.length > 0 && (
+                  <div className="flex items-center justify-between space-x-2 py-4">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredRecords.length)} of {filteredRecords.length} records
+                    </div>
+                    <div className="flex space-x-2">
+                      {renderPaginationButtons()}
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-4 text-muted-foreground">
-                No time records found.
+                {searchDate ? "No records found for the selected date." : "No time records found."}
               </div>
             )}
           </CardContent>

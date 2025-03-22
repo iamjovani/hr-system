@@ -13,6 +13,7 @@ import { useAppContext } from '../context/AppContext';
 export default function Login() {
   const [employeeId, setEmployeeId] = useState('');
   const [employeePassword, setEmployeePassword] = useState('');
+  const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -57,7 +58,7 @@ export default function Login() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'admin', password: adminPassword })
+        body: JSON.stringify({ username: adminUsername, password: adminPassword })
       });
       
       if (response.ok) {
@@ -66,7 +67,7 @@ export default function Login() {
         toast.success('Admin logged in. Welcome to the admin dashboard!');
         router.push('/admin');
       } else {
-        toast.error('Invalid admin password. Please check your password and try again.');
+        toast.error('Invalid admin credentials. Please check your username and password and try again.');
       }
     } catch (error) {
       console.error('Admin login error:', error);
@@ -133,7 +134,18 @@ export default function Login() {
             <form onSubmit={handleAdminLogin}>
               <CardContent className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="adminPassword">Admin Password</Label>
+                  <Label htmlFor="adminUsername">Username</Label>
+                  <Input
+                    id="adminUsername"
+                    placeholder="Enter admin username"
+                    value={adminUsername}
+                    onChange={(e) => setAdminUsername(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="adminPassword">Password</Label>
                   <Input
                     id="adminPassword"
                     type="password"
