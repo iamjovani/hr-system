@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
+import { compare } from 'bcryptjs';
 
 // Define interface for the employee
 interface Employee {
@@ -21,11 +22,22 @@ export async function POST(request: Request) {
       );
     }
     
+    // First get the employee by ID only
     const employee = db.prepare(
-      'SELECT * FROM employees WHERE id = ? AND password = ?'
-    ).get(employeeId, password) as Employee | undefined;
+      'SELECT * FROM employees WHERE id = ?'
+    ).get(employeeId) as Employee | undefined;
     
     if (!employee) {
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
+
+    // Compare the provided password with the stored hash
+    const isValidPassword = await compare(password, employee.password);
+    
+    if (!isValidPassword) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }

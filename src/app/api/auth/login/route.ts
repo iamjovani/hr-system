@@ -1,6 +1,12 @@
 // src/app/api/auth/login/route.ts
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
+import { compare } from 'bcryptjs';
+
+interface Admin {
+  username: string;
+  password: string;
+}
 
 export async function POST(request: Request) {
   try {
@@ -13,11 +19,22 @@ export async function POST(request: Request) {
       );
     }
     
+    // First get the admin by username only
     const admin = db.prepare(
-      'SELECT * FROM admins WHERE username = ? AND password = ?'
-    ).get(username, password);
+      'SELECT * FROM admins WHERE username = ?'
+    ).get(username) as Admin | undefined;
     
     if (!admin) {
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
+
+    // Compare the provided password with the stored hash
+    const isValidPassword = await compare(password, admin.password);
+    
+    if (!isValidPassword) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }

@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { hashSync } from 'bcryptjs';
 
 // Make sure the data directory exists
 const dataDir = path.join(process.cwd(), 'data');
@@ -58,15 +59,19 @@ db.exec(`
 const employeeCount = db.prepare('SELECT COUNT(*) as count FROM employees').get() as { count: number };
 
 if (employeeCount.count === 0) {
+  // Hash the default password
+  const defaultPassword = hashSync('password123', 10);
+  const adminPassword = hashSync('admin123', 10);
+  
   // Seed initial employees
   const insertEmployee = db.prepare('INSERT INTO employees (id, name, payRate, password) VALUES (?, ?, ?, ?)');
   
-  insertEmployee.run('1001', 'John Doe', 15.50, 'password123');
-  insertEmployee.run('1002', 'Jane Smith', 18.75, 'password123');
-  insertEmployee.run('1003', 'Robert Johnson', 20.00, 'password123');
+  insertEmployee.run('1001', 'John Doe', 15.50, defaultPassword);
+  insertEmployee.run('1002', 'Jane Smith', 18.75, defaultPassword);
+  insertEmployee.run('1003', 'Robert Johnson', 20.00, defaultPassword);
   
   // Seed admin user
-  db.prepare('INSERT INTO admins (username, password) VALUES (?, ?)').run('admin', 'admin123');
+  db.prepare('INSERT INTO admins (username, password) VALUES (?, ?)').run('admin', adminPassword);
   
   console.log('Database seeded with initial data');
 }
@@ -78,7 +83,8 @@ try {
 } catch (error) {
   // If error, then password field doesn't exist, so add it
   console.log('Adding password field to employees table...');
-  db.exec('ALTER TABLE employees ADD COLUMN password TEXT NOT NULL DEFAULT "password123"');
+  const defaultPassword = hashSync('password123', 10);
+  db.exec(`ALTER TABLE employees ADD COLUMN password TEXT NOT NULL DEFAULT '${defaultPassword}'`);
   console.log('Password field added to employees table');
 }
 
@@ -103,5 +109,45 @@ db.exec(`
     timestamp TEXT NOT NULL
   );
 `);
+
+// Migrate any plain text passwords to hashed passwords
+try {
+  // Check for plain text passwords (they will be shorter than hashed ones)
+  const plainTextEmployees = db.prepare(
+    'SELECT id, password FROM employees WHERE length(password) < 30'
+  ).all() as { id: string; password: string }[];
+
+  const plainTextAdmins = db.prepare(
+    'SELECT username, password FROM admins WHERE length(password) < 30'
+  ).all() as { username: string; password: string }[];
+
+  // Update employee passwords
+  if (plainTextEmployees.length > 0) {
+    const updateEmployeePassword = db.prepare(
+      'UPDATE employees SET password = ? WHERE id = ?'
+    );
+
+    for (const employee of plainTextEmployees) {
+      const hashedPassword = hashSync(employee.password, 10);
+      updateEmployeePassword.run(hashedPassword, employee.id);
+    }
+    console.log(`Migrated ${plainTextEmployees.length} employee passwords to hashed format`);
+  }
+
+  // Update admin passwords
+  if (plainTextAdmins.length > 0) {
+    const updateAdminPassword = db.prepare(
+      'UPDATE admins SET password = ? WHERE username = ?'
+    );
+
+    for (const admin of plainTextAdmins) {
+      const hashedPassword = hashSync(admin.password, 10);
+      updateAdminPassword.run(hashedPassword, admin.username);
+    }
+    console.log(`Migrated ${plainTextAdmins.length} admin passwords to hashed format`);
+  }
+} catch (error) {
+  console.error('Error during password migration:', error);
+}
 
 export default db;

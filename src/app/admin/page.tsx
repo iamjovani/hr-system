@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Printer, UserPlus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Printer, UserPlus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, Calendar, Key } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { useAppContext } from '../context/AppContext';
 import { Employee } from '../types';
@@ -29,6 +29,9 @@ export default function AdminDashboard() {
   const [payEndDate, setPayEndDate] = useState<Date | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [resetPasswordEmployee, setResetPasswordEmployee] = useState<Employee | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const router = useRouter();
 
   const { 
@@ -280,6 +283,43 @@ export default function AdminDashboard() {
     `);
     
     reportWindow.document.close();
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetPasswordEmployee || !newPassword || !confirmPassword) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/admin-reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: resetPasswordEmployee.id,
+          newPassword
+        })
+      });
+
+      if (response.ok) {
+        toast.success(`Password reset successfully for ${resetPasswordEmployee.name}`);
+        setResetPasswordEmployee(null);
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to reset password');
+      }
+    } catch (error) {
+      console.error('Password reset error:', error);
+      toast.error('An error occurred while resetting the password');
+    }
   };
 
   // Format date for display
@@ -559,6 +599,55 @@ export default function AdminDashboard() {
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
                           </Button>
+
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setResetPasswordEmployee(employee)}
+                              >
+                                <Key className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Reset Password</DialogTitle>
+                                <DialogDescription>
+                                  Reset password for {resetPasswordEmployee?.name}
+                                </DialogDescription>
+                              </DialogHeader>
+                              <form onSubmit={handleResetPassword}>
+                                <div className="grid gap-4 py-4">
+                                  <div className="grid gap-2">
+                                    <Label htmlFor="newPassword">New Password</Label>
+                                    <Input
+                                      id="newPassword"
+                                      type="password"
+                                      value={newPassword}
+                                      onChange={(e) => setNewPassword(e.target.value)}
+                                      placeholder="Enter new password"
+                                      required
+                                    />
+                                  </div>
+                                  <div className="grid gap-2">
+                                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                                    <Input
+                                      id="confirmPassword"
+                                      type="password"
+                                      value={confirmPassword}
+                                      onChange={(e) => setConfirmPassword(e.target.value)}
+                                      placeholder="Confirm new password"
+                                      required
+                                    />
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  <Button type="submit">Reset Password</Button>
+                                </DialogFooter>
+                              </form>
+                            </DialogContent>
+                          </Dialog>
 
                           <Dialog>
                             <DialogTrigger asChild>

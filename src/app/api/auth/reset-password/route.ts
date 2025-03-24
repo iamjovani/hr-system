@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
+import { compare, hash } from 'bcryptjs';
+
+interface Employee {
+  id: string;
+  password: string;
+}
 
 export async function POST(request: Request) {
   try {
@@ -12,22 +18,35 @@ export async function POST(request: Request) {
       );
     }
     
-    // Verify current password
+    // First get the employee by ID only
     const employee = db.prepare(
-      'SELECT * FROM employees WHERE id = ? AND password = ?'
-    ).get(employeeId, currentPassword);
+      'SELECT * FROM employees WHERE id = ?'
+    ).get(employeeId) as Employee | undefined;
     
     if (!employee) {
+      return NextResponse.json(
+        { error: 'Employee not found' },
+        { status: 404 }
+      );
+    }
+
+    // Verify current password using bcrypt
+    const isValidPassword = await compare(currentPassword, employee.password);
+    
+    if (!isValidPassword) {
       return NextResponse.json(
         { error: 'Current password is incorrect' },
         { status: 401 }
       );
     }
     
-    // Update password
+    // Hash the new password
+    const hashedPassword = await hash(newPassword, 10);
+    
+    // Update password with hashed version
     db.prepare(
       'UPDATE employees SET password = ? WHERE id = ?'
-    ).run(newPassword, employeeId);
+    ).run(hashedPassword, employeeId);
     
     return NextResponse.json({ 
       success: true,

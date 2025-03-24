@@ -10,16 +10,17 @@ interface WebpackConfigFunction {
 // Interface for our custom Next.js configuration
 interface CustomNextConfig extends NextConfig {
   output: 'standalone';
-  serverExternalPackages: string[];
+  experimental: {
+    serverComponentsExternalPackages: string[];
+  };
   webpack: WebpackConfigFunction;
 }
 
 const nextConfig: CustomNextConfig = {
   output: 'standalone',
-  // Changed from serverComponentsExternalPackages to serverExternalPackages
-  serverExternalPackages: ['better-sqlite3'],
-  
-  // Add this for better SQLite support
+  experimental: {
+    serverComponentsExternalPackages: ['better-sqlite3']
+  },
   webpack: (config: WebpackConfig): WebpackConfig => {
     // This allows the app to build even with native modules
     if (!config.externals) {
