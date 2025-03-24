@@ -25,6 +25,8 @@ export default function AdminDashboard() {
   const [editingTimeRecord, setEditingTimeRecord] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchDate, setSearchDate] = useState<Date | undefined>(undefined);
+  const [payStartDate, setPayStartDate] = useState<Date | undefined>(undefined);
+  const [payEndDate, setPayEndDate] = useState<Date | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const router = useRouter();
@@ -195,6 +197,15 @@ export default function AdminDashboard() {
     
     const stats = calculateStats(employeeId);
     
+    // Filter stats by date range if set
+    const filteredStats = stats.filter(stat => {
+      const recordDate = new Date(stat.clockInTime);
+      if (payStartDate && payEndDate) {
+        return recordDate >= payStartDate && recordDate <= payEndDate;
+      }
+      return true;
+    });
+    
     // In a real app, this would generate a proper report.
     // Here we'll just open a new window with the data.
     const reportWindow = window.open('', '_blank');
@@ -203,7 +214,7 @@ export default function AdminDashboard() {
     let totalHours = 0;
     let totalPay = 0;
     
-    stats.forEach(stat => {
+    filteredStats.forEach(stat => {
       totalHours += stat.hoursWorked;
       totalPay += stat.pay;
     });
@@ -220,6 +231,7 @@ export default function AdminDashboard() {
             th { background-color: #f2f2f2; }
             .summary { margin-top: 30px; font-weight: bold; }
             .print-button { margin-bottom: 20px; padding: 10px; }
+            .date-range { margin-bottom: 20px; color: #666; }
             @media print {
               .print-button { display: none; }
             }
@@ -230,6 +242,11 @@ export default function AdminDashboard() {
           <h1>Employee Timesheet</h1>
           <h2>${employee.name} (ID: ${employee.id})</h2>
           <p>Pay Rate: $${employee.payRate.toFixed(2)} per hour</p>
+          ${payStartDate && payEndDate ? `
+            <div class="date-range">
+              Period: ${payStartDate.toLocaleDateString()} - ${payEndDate.toLocaleDateString()}
+            </div>
+          ` : ''}
           
           <table>
             <thead>
@@ -242,7 +259,7 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              ${stats.map(stat => `
+              ${filteredStats.map(stat => `
                 <tr>
                   <td>${new Date(stat.clockInTime).toLocaleDateString()}</td>
                   <td>${new Date(stat.clockInTime).toLocaleString()}</td>
@@ -543,13 +560,60 @@ export default function AdminDashboard() {
                             <Trash2 className="h-4 w-4 text-red-500" />
                           </Button>
 
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePrintTimesheet(employee.id)}
-                          >
-                            <Printer className="h-4 w-4" />
-                          </Button>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                              >
+                                <Printer className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Print Timesheet</DialogTitle>
+                                <DialogDescription>
+                                  Select date range for the timesheet report
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="grid gap-4 py-4">
+                                <div className="grid gap-2">
+                                  <Label>Start Date</Label>
+                                  <DatePicker 
+                                    date={payStartDate} 
+                                    setDate={setPayStartDate}
+                                  />
+                                </div>
+                                <div className="grid gap-2">
+                                  <Label>End Date</Label>
+                                  <DatePicker 
+                                    date={payEndDate} 
+                                    setDate={setPayEndDate}
+                                  />
+                                </div>
+                                {(payStartDate || payEndDate) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setPayStartDate(undefined);
+                                      setPayEndDate(undefined);
+                                    }}
+                                  >
+                                    Clear Date Range
+                                  </Button>
+                                )}
+                              </div>
+                              <DialogFooter>
+                                <Button 
+                                  onClick={() => handlePrintTimesheet(employee.id)}
+                                  disabled={payStartDate && payEndDate && payStartDate > payEndDate}
+                                >
+                                  Print Timesheet
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
                         </TableCell>
                       </TableRow>
                     ))}
