@@ -82,4 +82,26 @@ try {
   console.log('Password field added to employees table');
 }
 
+// Set pragmas for performance
+db.pragma('journal_mode = WAL');
+
+// Add autoClockOut column to time_records if it doesn't exist
+const columns = db.prepare(`PRAGMA table_info(time_records)`).all();
+const columnNames = columns.map((col: any) => col.name);
+
+if (!columnNames.includes('autoClockOut')) {
+  db.exec(`ALTER TABLE time_records ADD COLUMN autoClockOut INTEGER DEFAULT 0;`);
+  console.log('Added autoClockOut column to time_records table');
+}
+
+// Create system_logs table if it doesn't exist
+db.exec(`
+  CREATE TABLE IF NOT EXISTS system_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event TEXT NOT NULL,
+    details TEXT,
+    timestamp TEXT NOT NULL
+  );
+`);
+
 export default db;

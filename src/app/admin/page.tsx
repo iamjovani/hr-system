@@ -17,6 +17,7 @@ import { useAppContext } from '../context/AppContext';
 import { Employee } from '../types';
 import { DatePicker } from '@/components/ui/date-picker';
 import { format, isValid, isSameDay } from 'date-fns';
+import AutoClockOutSettings from '../components/AutoClockOutSettings';
 
 export default function AdminDashboard() {
   const [newEmployee, setNewEmployee] = useState<Partial<Employee>>({ name: '', payRate: undefined });
@@ -399,9 +400,10 @@ export default function AdminDashboard() {
         </Card>
 
         <Tabs defaultValue="employees" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="employees">Employees</TabsTrigger>
             <TabsTrigger value="time-records">Time Records</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           {/* EMPLOYEES TAB */}
@@ -772,6 +774,13 @@ export default function AdminDashboard() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* SETTINGS TAB */}
+          <TabsContent value="settings">
+            <div className="grid grid-cols-1 gap-6">
+              <AutoClockOutSettings />
+            </div>
           </TabsContent>
         </Tabs>
       </div>
