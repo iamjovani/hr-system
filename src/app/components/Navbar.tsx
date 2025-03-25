@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Clock, User, LogOut, Settings, LayoutDashboard } from 'lucide-react';
 import { User as UserType } from '../types';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface NavbarProps {
   currentUser: UserType | null;
@@ -41,42 +42,46 @@ const Navbar = ({ currentUser, setCurrentUser }: NavbarProps) => {
           <span className="font-bold text-foreground text-xl">HR System</span>
         </div>
 
-        {currentUser ? (
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2">
-              <User className="h-4 w-4 text-foreground/80" />
-              <span className="text-foreground">{currentUser.name}</span>
-            </div>
-            <Link href={dashboardLink}>
-              <Button 
-                variant={isActive(dashboardLink) ? "default" : "ghost"} 
-                size="sm" 
-                className="gap-1"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                <span className="hidden md:inline">Dashboard</span>
+        <div className="flex items-center gap-4">
+          <ThemeToggle />
+          
+          {currentUser ? (
+            <>
+              <div className="hidden md:flex items-center gap-2">
+                <User className="h-4 w-4 text-foreground/80" />
+                <span className="text-foreground">{currentUser.name}</span>
+              </div>
+              <Link href={dashboardLink}>
+                <Button 
+                  variant={isActive(dashboardLink) ? "default" : "ghost"} 
+                  size="sm" 
+                  className="gap-1"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  <span className="hidden md:inline">Dashboard</span>
+                </Button>
+              </Link>
+              <Link href="/settings">
+                <Button 
+                  variant={isActive('/settings') ? "default" : "ghost"} 
+                  size="sm" 
+                  className="gap-1"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden md:inline">Settings</span>
+                </Button>
+              </Link>
+              <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1">
+                <LogOut className="h-4 w-4" />
+                <span className="hidden md:inline">Logout</span>
               </Button>
+            </>
+          ) : (
+            <Link href="/login">
+              <Button size="sm">Login</Button>
             </Link>
-            <Link href="/settings">
-              <Button 
-                variant={isActive('/settings') ? "default" : "ghost"} 
-                size="sm" 
-                className="gap-1"
-              >
-                <Settings className="h-4 w-4" />
-                <span className="hidden md:inline">Settings</span>
-              </Button>
-            </Link>
-            <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1">
-              <LogOut className="h-4 w-4" />
-              <span className="hidden md:inline">Logout</span>
-            </Button>
-          </div>
-        ) : (
-          <Link href="/login">
-            <Button size="sm">Login</Button>
-          </Link>
-        )}
+          )}
+        </div>
       </div>
     </header>
   );
