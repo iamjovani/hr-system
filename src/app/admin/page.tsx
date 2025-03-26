@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Printer, UserPlus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, Calendar, Key } from 'lucide-react';
-import Navbar from '../components/Navbar';
+import { AppLayout } from '../AppLayout';
 import { useAppContext } from '../context/AppContext';
 import { Employee } from '../types';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -446,8 +446,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <>
-      <Navbar currentUser={currentUser} setCurrentUser={setCurrentUser} />
+    <AppLayout>
       <div className="container mx-auto p-4">
         <Card className="mb-6">
           <CardHeader>
@@ -460,7 +459,16 @@ export default function AdminDashboard() {
           <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="employees">Employees</TabsTrigger>
             <TabsTrigger value="time-records">Time Records</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="settings" onClick={() => {
+              // This ensures the settings tab is visible when clicked
+              // by forcing a re-render of the component
+              setTimeout(() => {
+                const settingsContent = document.querySelector('[data-value="settings"]');
+                if (settingsContent) {
+                  settingsContent.setAttribute('data-state', 'active');
+                }
+              }, 0);
+            }}>Settings</TabsTrigger>
           </TabsList>
 
           {/* EMPLOYEES TAB */}
@@ -937,6 +945,6 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </div>
-    </>
+    </AppLayout>
   );
 }

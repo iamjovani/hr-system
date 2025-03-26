@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAppContext } from '../context/AppContext';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export default function Login() {
   const [employeeId, setEmployeeId] = useState('');
@@ -78,99 +79,108 @@ export default function Login() {
   };
 
   return (
-    <div className="flex justify-center items-center h-screen">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-center">HR System Login</CardTitle>
-          <CardDescription className="text-center">
-            Access your dashboard or admin panel
-          </CardDescription>
-        </CardHeader>
-        <Tabs defaultValue="employee" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="employee">Employee</TabsTrigger>
-            <TabsTrigger value="admin">Admin</TabsTrigger>
-          </TabsList>
-          <TabsContent value="employee">
-            <form onSubmit={handleEmployeeLogin}>
-              <CardContent className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="employeeId">Employee ID</Label>
-                  <Input
-                    id="employeeId"
-                    placeholder="Enter your employee ID"
-                    value={employeeId}
-                    onChange={(e) => setEmployeeId(e.target.value)}
-                    required
+    <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50 dark:bg-black">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      
+      <div className="w-full max-w-md px-4">
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">HR System</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Sign in to your account</p>
+        </div>
+        
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle className="text-center">HR System Login</CardTitle>
+            <CardDescription className="text-center">
+              Access your dashboard or admin panel
+            </CardDescription>
+          </CardHeader>
+          <Tabs defaultValue="employee" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="employee">Employee</TabsTrigger>
+              <TabsTrigger value="admin">Admin</TabsTrigger>
+            </TabsList>
+            <TabsContent value="employee">
+              <form onSubmit={handleEmployeeLogin}>
+                <CardContent className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="employeeId">Employee ID</Label>
+                    <Input
+                      id="employeeId"
+                      placeholder="Enter your employee ID"
+                      value={employeeId}
+                      onChange={(e) => setEmployeeId(e.target.value)}
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="employeePassword">Password</Label>
+                    <Input
+                      id="employeePassword"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={employeePassword}
+                      onChange={(e) => setEmployeePassword(e.target.value)}
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter className="pt-2">
+                  <Button 
+                    type="submit" 
+                    className="w-full !bg-black !text-white hover:!bg-gray-900"
                     disabled={isLoading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="employeePassword">Password</Label>
-                  <Input
-                    id="employeePassword"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={employeePassword}
-                    onChange={(e) => setEmployeePassword(e.target.value)}
-                    required
+                  >
+                    {isLoading ? 'Processing...' : 'Login'}
+                  </Button>
+                </CardFooter>
+              </form>
+            </TabsContent>
+            <TabsContent value="admin">
+              <form onSubmit={handleAdminLogin}>
+                <CardContent className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="adminUsername">Username</Label>
+                    <Input
+                      id="adminUsername"
+                      placeholder="Enter admin username"
+                      value={adminUsername}
+                      onChange={(e) => setAdminUsername(e.target.value)}
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="adminPassword">Password</Label>
+                    <Input
+                      id="adminPassword"
+                      type="password"
+                      placeholder="Enter admin password"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter className="pt-2">
+                  <Button 
+                    type="submit" 
+                    className="w-full !bg-black !text-white hover:!bg-gray-900 dark:!bg-black dark:hover:!bg-gray-900"
                     disabled={isLoading}
-                  />
-                </div>
-              </CardContent>
-              <br/>
-              <CardFooter>
-                <Button 
-                  type="submit" 
-                  className="w-full"
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Processing...' : 'Login'}
-                </Button>
-              </CardFooter>
-            </form>
-          </TabsContent>
-          <TabsContent value="admin">
-            <form onSubmit={handleAdminLogin}>
-              <CardContent className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="adminUsername">Username</Label>
-                  <Input
-                    id="adminUsername"
-                    placeholder="Enter admin username"
-                    value={adminUsername}
-                    onChange={(e) => setAdminUsername(e.target.value)}
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="adminPassword">Password</Label>
-                  <Input
-                    id="adminPassword"
-                    type="password"
-                    placeholder="Enter admin password"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
-              </CardContent>
-              <br/>
-              <CardFooter>
-                <Button 
-                  type="submit" 
-                  className="w-full"
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Processing...' : 'Login as Admin'}
-                </Button>
-              </CardFooter>
-            </form>
-          </TabsContent>
-        </Tabs>
-      </Card>
+                  >
+                    {isLoading ? 'Processing...' : 'Login as Admin'}
+                  </Button>
+                </CardFooter>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </Card>
+      </div>
     </div>
   );
 }

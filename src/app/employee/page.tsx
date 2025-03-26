@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Clock, RefreshCw, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import Navbar from '../components/Navbar';
+import { AppLayout } from '../AppLayout';
 import { useAppContext } from '../context/AppContext';
 import { TimeRecord } from '../types';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -349,8 +349,7 @@ export default function EmployeeDashboard() {
   }
 
   return (
-    <>
-      <Navbar currentUser={currentUser} setCurrentUser={setCurrentUser} />
+    <AppLayout>
       <div className="container mx-auto p-4 space-y-6">
         <Card className="w-full">
           <CardHeader className="pb-4">
@@ -384,8 +383,8 @@ export default function EmployeeDashboard() {
                 onClick={toggleClockStatus}
                 disabled={isLoading || isRefreshing}
                 className={isClockedIn 
-                  ? "bg-red-600 hover:bg-red-700" 
-                  : "bg-green-600 hover:bg-green-700"}
+                  ? "bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 dark:text-white" 
+                  : "bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 dark:text-white"}
               >
                 <Clock className="mr-2 h-5 w-5" /> 
                 {isLoading ? 'Processing...' : (isClockedIn ? 'Clock Out' : 'Clock In')}
@@ -393,7 +392,9 @@ export default function EmployeeDashboard() {
             </div>
             <div className="mt-4">
               <div className="text-sm font-medium mb-1">
-                Status: <span className={isClockedIn ? "text-green-600 font-bold" : "text-gray-600 font-medium"}>
+                Status: <span className={isClockedIn 
+                  ? "text-green-600 dark:text-green-500 font-bold" 
+                  : "text-gray-600 dark:text-gray-400 font-medium"}>
                   {isClockedIn ? 'Currently clocked in' : 'Not clocked in'}
                 </span>
               </div>
@@ -468,7 +469,7 @@ export default function EmployeeDashboard() {
                         <TableCell>{formatDate(record.clockInTime)}</TableCell>
                         <TableCell>
                           {record.clockOutTime ? formatDate(record.clockOutTime) : 
-                            <span className="text-green-600 font-medium">Active</span>}
+                            <span className="text-green-600 dark:text-green-500 font-medium">Active</span>}
                         </TableCell>
                         <TableCell className="text-right">
                           {calcHoursWorked(record.clockInTime, record.clockOutTime)}
@@ -498,6 +499,6 @@ export default function EmployeeDashboard() {
           </CardContent>
         </Card>
       </div>
-    </>
+    </AppLayout>
   );
 }
