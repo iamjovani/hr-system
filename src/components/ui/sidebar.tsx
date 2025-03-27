@@ -188,6 +188,14 @@ export function Sidebar({ currentUser, setCurrentUser }: SidebarProps) {
             />
           )}
 
+          <NavItem 
+            href="/time-off"
+            icon={<Calendar size={20} />}
+            label="Time Off"
+            active={isActive('/time-off')}
+            collapsed={collapsed}
+          />
+
           {/* Comment out for now
           <NavItem 
             href="/schedule"

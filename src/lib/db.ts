@@ -53,6 +53,32 @@ db.exec(`
     username TEXT PRIMARY KEY,
     password TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS time_off_allocations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employeeId TEXT NOT NULL,
+    year INTEGER NOT NULL,
+    ptoTotal INTEGER NOT NULL,
+    ptoRemaining INTEGER NOT NULL,
+    sickDaysTotal INTEGER NOT NULL,
+    sickDaysRemaining INTEGER NOT NULL,
+    FOREIGN KEY (employeeId) REFERENCES employees(id),
+    UNIQUE(employeeId, year)
+  );
+
+  CREATE TABLE IF NOT EXISTS time_off_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employeeId TEXT NOT NULL,
+    requestType TEXT NOT NULL,
+    startDate TEXT NOT NULL,
+    endDate TEXT NOT NULL,
+    durationHours INTEGER NOT NULL,
+    notes TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT,
+    FOREIGN KEY (employeeId) REFERENCES employees(id)
+  );
 `);
 
 // Check if we need to seed initial data (this will run for in-memory DB every time)
@@ -109,6 +135,27 @@ db.exec(`
     timestamp TEXT NOT NULL
   );
 `);
+
+// Check if we need to initialize time off allocations for existing employees
+const allocationsCount = db.prepare('SELECT COUNT(*) as count FROM time_off_allocations').get() as { count: number };
+if (allocationsCount.count === 0) {
+  const currentYear = new Date().getFullYear();
+  const employees = db.prepare('SELECT id FROM employees').all() as { id: string }[];
+  
+  // Default PTO and sick days for new employees
+  const defaultPTO = 80; // 10 days (8 hours each)
+  const defaultSickDays = 40; // 5 days (8 hours each)
+  
+  const insertAllocation = db.prepare(
+    'INSERT INTO time_off_allocations (employeeId, year, ptoTotal, ptoRemaining, sickDaysTotal, sickDaysRemaining) VALUES (?, ?, ?, ?, ?, ?)'
+  );
+  
+  for (const employee of employees) {
+    insertAllocation.run(employee.id, currentYear, defaultPTO, defaultPTO, defaultSickDays, defaultSickDays);
+  }
+  
+  console.log(`Initialized time off allocations for ${employees.length} employees`);
+}
 
 // Migrate any plain text passwords to hashed passwords
 try {

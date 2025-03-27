@@ -18,6 +18,8 @@ import { Employee } from '../types';
 import { DatePicker } from '@/components/ui/date-picker';
 import { format, isValid, isSameDay } from 'date-fns';
 import AutoClockOutSettings from '../components/AutoClockOutSettings';
+import TimeOffAllocationsManager from '../components/TimeOffAllocationsManager';
+import TimeOffRequestsManager from '../components/TimeOffRequestsManager';
 
 export default function AdminDashboard() {
   const [newEmployee, setNewEmployee] = useState<Partial<Employee>>({ name: '', payRate: undefined });
@@ -451,14 +453,15 @@ export default function AdminDashboard() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Admin Dashboard</CardTitle>
-            <CardDescription>Manage employees and view time records</CardDescription>
+            <CardDescription>Manage employees, view time records, and manage time-off requests</CardDescription>
           </CardHeader>
         </Card>
 
         <Tabs defaultValue="employees" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="employees">Employees</TabsTrigger>
             <TabsTrigger value="time-records">Time Records</TabsTrigger>
+            <TabsTrigger value="time-off">Time Off</TabsTrigger>
             <TabsTrigger value="settings" onClick={() => {
               // This ensures the settings tab is visible when clicked
               // by forcing a re-render of the component
@@ -935,6 +938,14 @@ export default function AdminDashboard() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* TIME OFF TAB */}
+          <TabsContent value="time-off">
+            <div className="grid grid-cols-1 gap-6">
+              <TimeOffRequestsManager />
+              <TimeOffAllocationsManager />
+            </div>
           </TabsContent>
 
           {/* SETTINGS TAB */}

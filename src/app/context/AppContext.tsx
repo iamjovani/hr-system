@@ -1,11 +1,24 @@
 "use client"
 
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { Employee, TimeRecord, User, StatRecord, ClockResult } from '../types';
+import { 
+  Employee, 
+  TimeRecord, 
+  User, 
+  StatRecord, 
+  ClockResult, 
+  TimeOffAllocation, 
+  TimeOffRequest,
+  TimeOffStatus,
+  TimeOffRequestType
+} from '../types';
+import { isWeekend, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
 
 interface AppContextType {
   employees: Employee[];
   timeRecords: TimeRecord[];
+  timeOffAllocations: TimeOffAllocation[];
+  timeOffRequests: TimeOffRequest[];
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
   clockIn: (employeeId: string) => Promise<ClockResult>;
@@ -20,6 +33,20 @@ interface AppContextType {
   fetchTimeRecords: (employeeId: number | string) => Promise<void>;
   resetPassword: (employeeId: string, currentPassword: string, newPassword: string) => Promise<void>;
   adminResetPassword: (employeeId: string, newPassword: string) => Promise<void>;
+  
+  // Time-off management functions
+  fetchTimeOffAllocations: (employeeId?: string, year?: number) => Promise<void>;
+  updateTimeOffAllocation: (employeeId: string, year: number, ptoTotal: number, sickDaysTotal: number) => Promise<void>;
+  fetchTimeOffRequests: (employeeId?: string, status?: TimeOffStatus) => Promise<void>;
+  createTimeOffRequest: (request: Partial<TimeOffRequest>) => Promise<TimeOffRequest>;
+  updateTimeOffRequestStatus: (requestId: number, status: TimeOffStatus) => Promise<void>;
+  deleteTimeOffRequest: (requestId: number) => Promise<void>;
+  calculateDaysInDateRange: (startDate: Date, endDate: Date) => number;
+  wouldExceedQuota: (employeeId: string, requestType: TimeOffRequestType, startDate: Date, endDate: Date) => {
+    exceedsQuota: boolean;
+    remainingDays: number;
+    requestedDays: number;
+  };
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -31,6 +58,8 @@ interface AppProviderProps {
 export const AppProvider = ({ children }: AppProviderProps) => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeRecords, setTimeRecords] = useState<TimeRecord[]>([]);
+  const [timeOffAllocations, setTimeOffAllocations] = useState<TimeOffAllocation[]>([]);
+  const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
@@ -69,7 +98,30 @@ export const AppProvider = ({ children }: AppProviderProps) => {
         try {
           const savedUser = sessionStorage.getItem('currentUser');
           if (savedUser && savedUser !== 'undefined' && savedUser !== 'null') {
-            setCurrentUser(JSON.parse(savedUser));
+            const user = JSON.parse(savedUser);
+            setCurrentUser(user);
+            
+            // If we have a current user, fetch their time-off data
+            if (user && user.id) {
+              try {
+                // Fetch time-off allocations for the current user
+                const currentYear = new Date().getFullYear();
+                const allocationsResponse = await fetch(`/api/time-off/allocations?employeeId=${user.id}&year=${currentYear}`);
+                if (allocationsResponse.ok) {
+                  const allocationsData = await allocationsResponse.json();
+                  setTimeOffAllocations(allocationsData);
+                }
+                
+                // Fetch time-off requests for the current user
+                const requestsResponse = await fetch(`/api/time-off/requests?employeeId=${user.id}`);
+                if (requestsResponse.ok) {
+                  const requestsData = await requestsResponse.json();
+                  setTimeOffRequests(requestsData);
+                }
+              } catch (error) {
+                console.error('Error fetching time-off data:', error);
+              }
+            }
           }
         } catch (error) {
           console.error('Error parsing user from session storage:', error);
@@ -516,9 +568,229 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     }
   };
 
+  // Time-off management functions
+  const fetchTimeOffAllocations = async (employeeId?: string, year?: number): Promise<void> => {
+    try {
+      const url = new URL('/api/time-off/allocations', window.location.origin);
+      
+      if (employeeId) {
+        url.searchParams.append('employeeId', employeeId.toString());
+      }
+      
+      if (year) {
+        url.searchParams.append('year', year.toString());
+      }
+      
+      const response = await fetch(url.toString());
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch time-off allocations: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      setTimeOffAllocations(data);
+    } catch (error) {
+      console.error('Error fetching time-off allocations:', error);
+      throw error;
+    }
+  };
+
+  const updateTimeOffAllocation = async (
+    employeeId: string, 
+    year: number, 
+    ptoTotal: number, 
+    sickDaysTotal: number
+  ): Promise<void> => {
+    try {
+      const response = await fetch('/api/time-off/allocations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          employeeId,
+          year,
+          ptoTotal,
+          sickDaysTotal
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update time-off allocation');
+      }
+      
+      const result = await response.json();
+      
+      // Update local state
+      setTimeOffAllocations(prev => {
+        const index = prev.findIndex(
+          a => a.employeeId === employeeId && a.year === year
+        );
+        
+        if (index >= 0) {
+          // Replace existing allocation
+          const updated = [...prev];
+          updated[index] = result.allocation;
+          return updated;
+        } else {
+          // Add new allocation
+          return [...prev, result.allocation];
+        }
+      });
+    } catch (error) {
+      console.error('Error updating time-off allocation:', error);
+      throw error;
+    }
+  };
+
+  const fetchTimeOffRequests = async (employeeId?: string, status?: TimeOffStatus): Promise<void> => {
+    try {
+      const url = new URL('/api/time-off/requests', window.location.origin);
+      
+      if (employeeId) {
+        url.searchParams.append('employeeId', employeeId.toString());
+      }
+      
+      if (status) {
+        url.searchParams.append('status', status);
+      }
+      
+      const response = await fetch(url.toString());
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch time-off requests: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      setTimeOffRequests(data);
+    } catch (error) {
+      console.error('Error fetching time-off requests:', error);
+      throw error;
+    }
+  };
+
+  const createTimeOffRequest = async (request: Partial<TimeOffRequest>): Promise<TimeOffRequest> => {
+    try {
+      const response = await fetch('/api/time-off/requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create time-off request');
+      }
+      
+      const result = await response.json();
+      
+      // Update local state
+      setTimeOffRequests(prev => [...prev, result.request]);
+      
+      return result.request;
+    } catch (error) {
+      console.error('Error creating time-off request:', error);
+      throw error;
+    }
+  };
+
+  const updateTimeOffRequestStatus = async (requestId: number, status: TimeOffStatus): Promise<void> => {
+    try {
+      const response = await fetch(`/api/time-off/requests/${requestId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update request status');
+      }
+      
+      const result = await response.json();
+      
+      // Update local state
+      setTimeOffRequests(prev => 
+        prev.map(req => req.id === requestId ? result.request : req)
+      );
+      
+      // If an allocation was updated (e.g., PTO or sick days deducted), refresh allocations
+      if (
+        result.request && 
+        status === 'approved' && 
+        (result.request.requestType === 'PTO' || result.request.requestType === 'Sick')
+      ) {
+        const employeeId = result.request.employeeId;
+        const year = new Date(result.request.startDate).getFullYear();
+        await fetchTimeOffAllocations(employeeId, year);
+      }
+    } catch (error) {
+      console.error('Error updating time-off request status:', error);
+      throw error;
+    }
+  };
+
+  const deleteTimeOffRequest = async (requestId: number): Promise<void> => {
+    try {
+      const response = await fetch(`/api/time-off/requests/${requestId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete time-off request');
+      }
+      
+      // Update local state by removing the deleted request
+      setTimeOffRequests(prev => prev.filter(req => req.id !== requestId));
+    } catch (error) {
+      console.error('Error deleting time-off request:', error);
+      throw error;
+    }
+  };
+
+  const calculateDaysInDateRange = (startDate: Date, endDate: Date): number => {
+    const days = eachDayOfInterval({ start: startDate, end: endDate });
+    return days.filter(day => !isWeekend(day)).length;
+  };
+
+  const wouldExceedQuota = (
+    employeeId: string, 
+    requestType: TimeOffRequestType, 
+    startDate: Date, 
+    endDate: Date
+  ) => {
+    const allocation = timeOffAllocations.find(a => a.employeeId === employeeId);
+    if (!allocation) {
+      return { exceedsQuota: true, remainingDays: 0, requestedDays: 0 };
+    }
+
+    const requestedDays = calculateDaysInDateRange(startDate, endDate);
+    let remainingDays = 0;
+
+    if (requestType === 'PTO') {
+      remainingDays = allocation.ptoRemaining;
+    } else if (requestType === 'Sick') {
+      remainingDays = allocation.sickDaysRemaining;
+    }
+
+    const exceedsQuota = requestedDays > remainingDays;
+
+    return { exceedsQuota, remainingDays, requestedDays };
+  };
+
   const value: AppContextType = {
     employees,
     timeRecords,
+    timeOffAllocations,
+    timeOffRequests,
     currentUser,
     setCurrentUser,
     clockIn,
@@ -532,7 +804,15 @@ export const AppProvider = ({ children }: AppProviderProps) => {
     isLoaded,
     fetchTimeRecords,
     resetPassword,
-    adminResetPassword
+    adminResetPassword,
+    fetchTimeOffAllocations,
+    updateTimeOffAllocation,
+    fetchTimeOffRequests,
+    createTimeOffRequest,
+    updateTimeOffRequestStatus,
+    deleteTimeOffRequest,
+    calculateDaysInDateRange,
+    wouldExceedQuota
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Clock, User, LogOut, Settings, LayoutDashboard } from 'lucide-react';
+import { Clock, User, LogOut, Settings, LayoutDashboard, Calendar } from 'lucide-react';
 import { User as UserType } from '../types';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -59,6 +59,16 @@ const Navbar = ({ currentUser, setCurrentUser }: NavbarProps) => {
                 >
                   <LayoutDashboard className="h-4 w-4" />
                   <span className="hidden md:inline">Dashboard</span>
+                </Button>
+              </Link>
+              <Link href="/time-off">
+                <Button 
+                  variant={isActive('/time-off') ? "default" : "ghost"} 
+                  size="sm" 
+                  className="gap-1"
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span className="hidden md:inline">Time Off</span>
                 </Button>
               </Link>
               <Link href="/settings">
